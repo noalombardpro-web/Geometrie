@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Géométrie 3D</title>
+<style>
+  :root { --fg:#eef1f7; --muted:#8d97ad; --panel:rgba(16,19,28,.62); --line:rgba(255,255,255,.12); --accent:#7cc4ff; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#0b0d14; color:var(--fg);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; }
+  canvas { display:block; position:fixed; inset:0; outline:none; }
+  .panel { position:fixed; background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    backdrop-filter:blur(14px) saturate(1.4); -webkit-backdrop-filter:blur(14px) saturate(1.4); }
+  #title { top:20px; left:20px; padding:14px 18px; }
+  #title h1 { margin:0; font-size:18px; font-weight:650; letter-spacing:.2px; }
+  #title p { margin:2px 0 0; font-size:12px; color:var(--muted); }
+  #info { top:20px; right:20px; width:250px; padding:16px 18px; }
+  #info h2 { margin:0 0 2px; font-size:20px; }
+  #info .sub { font-size:12px; color:var(--muted); margin-bottom:12px; }
+  #info dl { display:grid; grid-template-columns:1fr auto; gap:6px 12px; margin:0; font-size:13px; }
+  #info dt { color:var(--muted); } #info dd { margin:0; font-variant-numeric:tabular-nums; text-align:right; }
+  #tools { margin-top:14px; display:flex; gap:8px; }
+  button { font:inherit; color:var(--fg); cursor:pointer; }
+  .tool { flex:1; padding:8px 0; font-size:12px; background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:10px; transition:.15s; }
+  .tool:hover { background:rgba(255,255,255,.12); } .tool.on { background:var(--accent); color:#06121f; border-color:transparent; font-weight:600; }
+  #nav { bottom:18px; left:50%; transform:translateX(-50%); padding:8px; display:flex; gap:6px; max-width:calc(100vw - 24px); overflow-x:auto; }
+  #nav button { display:flex; align-items:center; gap:7px; padding:8px 12px; font-size:12.5px; white-space:nowrap;
+    background:transparent; border:1px solid transparent; border-radius:10px; transition:.15s; }
+  #nav button:hover { background:rgba(255,255,255,.08); }
+  #nav button.active { background:rgba(255,255,255,.14); border-color:var(--line); }
+  #nav i { width:10px; height:10px; border-radius:50%; display:block; box-shadow:0 0 10px currentColor; background:currentColor; }
+  #hint { position:fixed; bottom:78px; left:0; right:0; text-align:center; font-size:12px; color:var(--muted); pointer-events:none; }
+  #loader { position:fixed; inset:0; display:grid; place-items:center; background:#0b0d14; transition:opacity .6s; z-index:5; color:var(--muted); }
+  @media (max-width:700px){ #info{ top:auto; bottom:84px; left:12px; right:12px; width:auto; padding:12px 14px; } #hint{display:none} #title{top:12px; left:12px;} }
+</style>
+</head>
+<body>
+<div id="loader">Chargement…</div>
+<div class="panel" id="title"><h1>Géométrie 3D</h1><p>10 solides · rendu physique temps réel</p></div>
+<div class="panel" id="info">
+  <h2 id="iname">—</h2><div class="sub" id="isub"></div>
+  <dl>
+    <dt>Sommets</dt><dd id="iv"></dd>
+    <dt>Arêtes</dt><dd id="ie"></dd>
+    <dt>Faces</dt><dd id="if"></dd>
+    <dt>Volume</dt><dd id="ivol"></dd>
+  </dl>
+  <div id="tools">
+    <button class="tool on" id="tRot">Rotation</button>
+    <button class="tool" id="tWire">Fil de fer</button>
+  </div>
+</div>
+<div id="hint">Glisser pour orbiter · molette pour zoomer · cliquer un solide pour le sélectionner</div>
+<div class="panel" id="nav"></div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/RoomEnvironment.js';
+
+// ---------- Scène ----------
+const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0d14);
+scene.fog = new THREE.Fog(0x0b0d14, 30, 62);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.03).texture;
+scene.environmentIntensity = 0.9;
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+const HOME = new THREE.Vector3(0, 12, 25);
+camera.position.copy(HOME);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.06;
+controls.minDistance = 3; controls.maxDistance = 40;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.target.set(0, 1.2, 0);
+
+// Lumières
+const key = new THREE.DirectionalLight(0xfff1e0, 2.4);
+key.position.set(8, 14, 6); key.castShadow = true;
+key.shadow.mapSize.set(4096, 4096);
+Object.assign(key.shadow.camera, { left:-14, right:14, top:14, bottom:-14, near:1, far:40 });
+key.shadow.bias = -0.0002; key.shadow.normalBias = 0.03; key.shadow.radius = 4;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x6aa8ff, 1.4); rim.position.set(-9, 6, -8); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0x8fb4ff, 0x1a1420, 0.25));
+
+// Sol
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(40, 128),
+  new THREE.MeshStandardMaterial({ color:0x141824, roughness:0.35, metalness:0.6 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const ring = new THREE.Mesh(new THREE.RingGeometry(8.9, 9.0, 160),
+  new THREE.MeshBasicMaterial({ color:0x7cc4ff, transparent:true, opacity:0.35 }));
+ring.rotation.x = -Math.PI / 2; ring.position.y = 0.005; scene.add(ring);
+
+// ---------- Solides ----------
+const PHI = (1 + Math.sqrt(5)) / 2;
+const shapes = [
+  { name:'Cube', sub:'Hexaèdre régulier', color:0xff5d6c, V:8, E:12, F:6,
+    geo:() => new THREE.BoxGeometry(2, 2, 2), vol:'a³ = 8', edges:true },
+  { name:'Parallélépipède', sub:'Pavé droit (rectangle 3D)', color:0xffa94d, V:8, E:12, F:6,
+    geo:() => new THREE.BoxGeometry(3, 1.4, 1.8), vol:'L·l·h = 7,56', edges:true },
+  { name:'Tétraèdre', sub:'Triangle 3D · 4 faces triangulaires', color:0xffe066, V:4, E:6, F:4,
+    geo:() => new THREE.TetrahedronGeometry(1.7), vol:'a³/(6√2)', edges:true, flat:true, lift:0.55 },
+  { name:'Octaèdre', sub:'8 faces triangulaires', color:0x69db7c, V:6, E:12, F:8,
+    geo:() => new THREE.OctahedronGeometry(1.45), vol:'(√2/3)·a³', edges:true, flat:true, lift:0.45 },
+  { name:'Dodécaèdre', sub:'12 faces pentagonales', color:0x38d9a9, V:20, E:30, F:12,
+    geo:() => new THREE.DodecahedronGeometry(1.4), vol:'≈ 7,66·a³', edges:true, flat:true, lift:0.4 },
+  { name:'Icosaèdre', sub:'20 faces triangulaires', color:0x4dabf7, V:12, E:30, F:20,
+    geo:() => new THREE.IcosahedronGeometry(1.45), vol:'≈ 2,18·a³', edges:true, flat:true, lift:0.4 },
+  { name:'Sphère', sub:'Surface de rayon constant', color:0x748ffc, V:'—', E:'—', F:'1',
+    geo:() => new THREE.SphereGeometry(1.3, 128, 96), vol:'4/3·π·r³', lift:0.3 },
+  { name:'Cylindre', sub:'Révolution d’un rectangle', color:0xb197fc, V:'—', E:'2', F:'3',
+    geo:() => new THREE.CylinderGeometry(1.05, 1.05, 2.4, 128, 1), vol:'π·r²·h', edges:'smooth' },
+  { name:'Cône', sub:'Révolution d’un triangle', color:0xf783ac, V:'1', E:'1', F:'2',
+    geo:() => new THREE.ConeGeometry(1.35, 2.6, 128, 1), vol:'⅓·π·r²·h', edges:'smooth' },
+  { name:'Tore', sub:'Surface de genre 1', color:0xff8787, V:'—', E:'—', F:'1',
+    geo:() => new THREE.TorusGeometry(1.2, 0.5, 96, 192), vol:'2π²·R·r²', lift:0.5, stand:true },
+];
+
+const group = new THREE.Group(); scene.add(group);
+const pickables = [];
+const R = 8;
+shapes.forEach((s, i) => {
+  const a = (i / shapes.length) * Math.PI * 2;
+  const slot = new THREE.Group();
+  slot.position.set(Math.sin(a) * R, 0, Math.cos(a) * R);
+  slot.rotation.y = a;      // face le centre via -z local
+  group.add(slot);
+
+  // piédestal
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.05, 0.35, 96),
+    new THREE.MeshPhysicalMaterial({ color:0x2a3147, roughness:0.35, metalness:0.35, clearcoat:1, clearcoatRoughness:0.15 }));
+  ped.position.y = 0.175; ped.castShadow = ped.receiveShadow = true; slot.add(ped);
+  const glow = new THREE.Mesh(new THREE.TorusGeometry(1.93, 0.018, 12, 128),
+    new THREE.MeshBasicMaterial({ color:s.color }));
+  glow.rotation.x = Math.PI / 2; glow.position.y = 0.35; slot.add(glow);
+
+  // solide
+  const geo = s.geo();
+  const mat = new THREE.MeshPhysicalMaterial({
+    color:s.color, roughness:0.18, metalness:0.1, clearcoat:1, clearcoatRoughness:0.06,
+    sheen:0.4, sheenColor:new THREE.Color(s.color), sheenRoughness:0.4,
+    flatShading:!!s.flat, envMapIntensity:1.2,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  geo.computeBoundingBox();
+  const h = geo.boundingBox.max.y - geo.boundingBox.min.y;
+  const base = 0.35 + h / 2 + (s.lift || 0) + (s.stand ? 0.2 : 0);
+  mesh.position.y = base;
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.userData = { idx:i, base };
+  if (s.name === 'Tétraèdre') mesh.rotation.set(0, 0, 0);
+  slot.add(mesh); pickables.push(mesh);
+
+  if (s.edges) {
+    const el = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo, s.edges === 'smooth' ? 40 : 1),
+      new THREE.LineBasicMaterial({ color:0xffffff, transparent:true, opacity:0.55 }));
+    mesh.add(el); s.edgeMat = el.material;
+  }
+  s.mesh = mesh; s.slot = slot; s.mat = mat;
+  s.world = new THREE.Vector3(); slot.getWorldPosition(s.world);
+});
+
+// ---------- UI ----------
+const nav = document.getElementById('nav');
+let selected = 0, wire = false, spin = true;
+shapes.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.innerHTML = `<i style="color:#${s.color.toString(16).padStart(6,'0')}"></i>${s.name}`;
+  b.onclick = () => select(i); nav.appendChild(b); s.btn = b;
+});
+const $ = id => document.getElementById(id);
+function select(i) {
+  selected = i; const s = shapes[i];
+  shapes.forEach((o, k) => o.btn.classList.toggle('active', k === i));
+  s.btn.scrollIntoView({ inline:'center', block:'nearest', behavior:'smooth' });
+  $('iname').textContent = s.name; $('isub').textContent = s.sub;
+  $('iv').textContent = s.V; $('ie').textContent = s.E; $('if').textContent = s.F; $('ivol').textContent = s.vol;
+  flyTo(s);
+}
+const tween = { t:1, fromPos:new THREE.Vector3(), toPos:new THREE.Vector3(), fromTgt:new THREE.Vector3(), toTgt:new THREE.Vector3() };
+function flyTo(s) {
+  const p = s.world.clone();
+  const out = new THREE.Vector3(p.x, 0, p.z).normalize();
+  tween.fromPos.copy(camera.position); tween.fromTgt.copy(controls.target);
+  tween.toTgt.set(p.x, s.mesh.userData.base, p.z);
+  tween.toPos.set(p.x - out.x * 8, s.mesh.userData.base + 2.4, p.z - out.z * 8);
+  tween.t = 0;
+}
+$('tRot').onclick = e => { spin = !spin; e.currentTarget.classList.toggle('on', spin); };
+$('tWire').onclick = e => {
+  wire = !wire; e.currentTarget.classList.toggle('on', wire);
+  shapes.forEach(s => { s.mat.wireframe = wire; if (s.edgeMat) s.edgeMat.visible = !wire; });
+};
+
+// Sélection au clic (sans glisser)
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let down = null;
+renderer.domElement.addEventListener('pointerdown', e => down = [e.clientX, e.clientY]);
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  ptr.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObjects(pickables, false)[0];
+  if (hit) select(hit.object.userData.idx);
+});
+renderer.domElement.addEventListener('dblclick', () => {
+  tween.fromPos.copy(camera.position); tween.fromTgt.copy(controls.target);
+  tween.toPos.copy(HOME); tween.toTgt.set(0, 1.2, 0); tween.t = 0;
+  shapes.forEach(o => o.btn.classList.remove('active'));
+});
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ---------- Boucle ----------
+const clock = new THREE.Clock();
+const ease = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  if (tween.t < 1) {
+    tween.t = Math.min(1, tween.t + dt / 1.4);
+    const k = ease(tween.t);
+    camera.position.lerpVectors(tween.fromPos, tween.toPos, k);
+    controls.target.lerpVectors(tween.fromTgt, tween.toTgt, k);
+  }
+  shapes.forEach((s, i) => {
+    const m = s.mesh;
+    if (spin) m.rotation.y += dt * (i === selected ? 0.9 : 0.45);
+    m.position.y = m.userData.base + Math.sin(t * 1.2 + i) * 0.06;
+    s.edgeMat && (s.edgeMat.opacity = i === selected ? 0.9 : 0.5);
+  });
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+select(0);
+// Vue d'ensemble au départ
+camera.position.copy(HOME); controls.target.set(0, 1.2, 0); tween.t = 1;
+shapes.forEach(o => o.btn.classList.remove('active'));
+requestAnimationFrame(() => { $('loader').style.opacity = 0; setTimeout(() => $('loader').remove(), 700); });
+window.__ready = true;
+</script>
+</body>
+</html>
