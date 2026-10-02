@@ -10,7 +10,7 @@
 <style>
   /* Ardoise de classe : viewport 3D au centre, liste des solides à gauche, carnet de mesures à droite. */
   :root {
-    --board:#172120; --board-2:#1d2928; --panel:#1f2b2a; --chalk:#eceee4; --muted:#8fa09a;
+    --board:#08090b; --board-2:#0d0f12; --panel:#0f1215; --chalk:#eceee4; --muted:#8fa09a;
     --line:rgba(236,238,228,.12); --line-2:rgba(236,238,228,.22); --accent:#f2c14e; --ok:#8fe3b0; --warn:#f28f79;
     --f-math:"STIX Two Text","Cambria Math","Times New Roman",serif;
     --f-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -41,14 +41,14 @@
   #labels { position:absolute; inset:0; pointer-events:none; }
   .toolbar { position:absolute; top:12px; left:12px; right:12px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; pointer-events:none; }
   .toolbar > * { pointer-events:auto; }
-  .chip { font:500 12px var(--f-ui); color:var(--chalk); background:rgba(23,33,32,.72); border:1px solid var(--line); border-radius:999px; padding:6px 11px; cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  .chip { font:500 12px var(--f-ui); color:var(--chalk); background:rgba(8,9,11,.72); border:1px solid var(--line); border-radius:999px; padding:6px 11px; cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .chip:hover { border-color:var(--line-2); }
   .chip[aria-pressed="true"] { background:var(--chalk); color:var(--board); border-color:transparent; }
   .chip:focus-visible, .seg button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  .seg { display:flex; background:rgba(23,33,32,.72); border:1px solid var(--line); border-radius:999px; padding:2px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  .seg { display:flex; background:rgba(8,9,11,.72); border:1px solid var(--line); border-radius:999px; padding:2px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .seg button { all:unset; cursor:pointer; font:500 12px var(--f-ui); padding:4px 10px; border-radius:999px; color:var(--muted); }
   .seg button.on { background:rgba(236,238,228,.14); color:var(--chalk); }
-  .opac { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); background:rgba(23,33,32,.72); border:1px solid var(--line); border-radius:999px; padding:4px 12px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  .opac { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); background:rgba(8,9,11,.72); border:1px solid var(--line); border-radius:999px; padding:4px 12px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .opac input { width:80px; }
   .legend { position:absolute; left:14px; bottom:12px; font-size:11.5px; color:var(--muted); display:flex; gap:14px; flex-wrap:wrap; pointer-events:none; }
   .legend span::before { content:""; display:inline-block; width:18px; height:0; border-top:2px solid var(--chalk); vertical-align:middle; margin-right:6px; }
@@ -198,7 +198,7 @@ stage.appendChild(renderer.domElement);
 const labelRenderer = new CSS2DRenderer({ element:$('labels') });
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x172120);
+scene.background = new THREE.Color(0x08090b);
 const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 500);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
