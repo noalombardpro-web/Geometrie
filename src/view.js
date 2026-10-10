@@ -327,9 +327,9 @@ export class View {
       }
       case 'plane': {
         const poly = this.planePolygon(v); if (!poly) break;
-        const P3 = poly.map(M); this.addMesh(this.trisGeo([P3]), { color: col, opacity: .13, hi, id });
+        const P3 = poly.map(M); this.addMesh(this.trisGeo([P3]), { color: '#ffffff', opacity: .22, hi, id });
         const pairs = []; for (let i = 0; i < P3.length; i++) pairs.push(P3[i], P3[(i + 1) % P3.length]);
-        segs(pairs, { width: w * .75, opacity: .85 }); label(P3[0].clone().lerp(P3[Math.floor(P3.length / 2)], .25), [4, -12]); break;
+        segs(pairs, { color: '#ffffff', width: w * .75, opacity: .9 }); label(P3[0].clone().lerp(P3[Math.floor(P3.length / 2)], .25), [4, -12]); break;
       }
       case 'poly': {
         const P3 = v.pts.map(M); this.addMesh(this.trisGeo([P3]), { color: col, opacity: .16, hi, id });
