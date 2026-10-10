@@ -1,12 +1,17 @@
 // Thème clair / sombre partagé par les deux ateliers. Le choix est mémorisé dans le navigateur.
 const KEY = 'atelier-theme';
-export const BG = { dark: 0x08090b, light: 0x8a9099 };
+export const BG = { dark: 0x08090b, light: 0xf6f7f9 };
+const EDGE_LIGHT = '#2b323c';
 export const INK = { dark: 0xeceee4, light: 0x1f2733 };
 const listeners = new Set();
 let theme = 'dark';
 try { theme = localStorage.getItem(KEY) === 'light' ? 'light' : 'dark'; } catch { /* stockage indisponible : sombre par défaut */ }
 
 export const currentTheme = () => theme;
+// Mode clair : arêtes et bordures gris foncé, texte noir ; mode sombre : couleurs d’origine
+export const strokeCss = c => theme === 'light' ? EDGE_LIGHT : c;
+export const strokeHex = c => theme === 'light' ? 0x2b323c : c;
+export const textCss = c => theme === 'light' ? '#0b0f14' : c;
 export const inkCss = () => '#' + INK[theme].toString(16).padStart(6, '0');
 // Appelle f tout de suite, puis à chaque changement de thème
 export function onTheme(f) { listeners.add(f); f(theme); return () => listeners.delete(f); }

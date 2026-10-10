@@ -21,8 +21,8 @@
   }
   /* Mode clair : mêmes noms de jetons, valeurs claires (choisi via le bouton ☀ / ☾) */
   :root[data-theme="light"] {
-    --board:#8a9099; --board-2:#7b818b; --panel:#959ba4; --chalk:#0b0f14; --muted:#1f2630; --ink-rgb:11,15,20;
-    --glass:rgba(150,155,164,.92); --field:rgba(11,15,20,.16);
+    --board:#f6f7f9; --board-2:#eceef2; --panel:#fcfcfd; --chalk:#0b0f14; --muted:#3b4450; --ink-rgb:11,15,20;
+    --glass:rgba(255,255,255,.92); --field:rgba(11,15,20,.05); --line:#4b5361; --line-2:#2f353e;
     --accent:#3a414c; --on-accent:#ffffff; --ok:#124d32; --warn:#7f2716;
     color-scheme:light;
   }
@@ -376,7 +376,7 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { onTheme, BG, INK, currentTheme } from './src/theme.js';
+import { onTheme, BG, INK, currentTheme, strokeHex } from './src/theme.js';
 import { mountZoom, nextPalier, clampZoom } from './src/zoom.js';
 import { OrbitControls } from 'three/addons/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/CSS2DRenderer.js';
@@ -639,7 +639,7 @@ function build() {
   const root = new THREE.Group();
   const bbox = new THREE.Box3().setFromBufferAttribute(d.geo.attributes.position);
   const size = bbox.getSize(V3()).length();
-  const col = new THREE.Color(s.color);
+  const col = new THREE.Color(strokeHex(s.color));
 
   // 1. profondeur seule (légèrement reculée) : sert à séparer arêtes visibles et cachées
   const depth = new THREE.Mesh(d.geo, new THREE.MeshBasicMaterial({ colorWrite:false, polygonOffset:true, polygonOffsetFactor:1, polygonOffsetUnits:2 }));

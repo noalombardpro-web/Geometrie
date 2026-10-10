@@ -6,7 +6,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import * as G from './geo.js';
-import { onTheme, BG, inkCss } from './theme.js';
+import { onTheme, BG, inkCss, strokeCss, textCss } from './theme.js';
 import { clampZoom, nextPalier } from './zoom.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -256,7 +256,7 @@ export class View {
         if (n === 4) { const pts = []; for (let s = 0; s < 40; s++) { const p = Z.slice(), q = Z.slice(); p[i] = -R + 2 * R * s / 40; q[i] = -R + 2 * R * (s + 1) / 40; pts.push(this.fpos(p), this.fpos(q)); } this.addSegs(pts, { color: col, width: 1.5, opacity: .85, order: 4 }); b = this.fpos(c1); a = this.fpos(c0.map((x, j) => j === i ? R * .93 : 0)); }
         else { a = this.fpos(c0); b = this.fpos(c1); this.addSegs([a, b], { color: col, width: 1.5, opacity: .85, order: 4 }); a = this.fpos(c0.map((x, j) => j === i ? R * .93 : 0)); }
         this.arrowHead(a, b, col, 11);
-        this.addLabel('ax' + i, names[i], b.clone(), 'cl cl-ax', [8, -12]).el.style.color = col;
+        this.addLabel('ax' + i, names[i], b.clone(), 'cl cl-ax', [8, -12]).el.style.color = textCss(col);
         if (this.opts.ticks) for (let k = -R; k <= R + 1e-9; k += ts) {
           if (Math.abs(k) < 1e-9 || (R - k) < ts * .5 && k > 0) { if (Math.abs(k) < 1e-9 && i === 0) this.addLabel('o0', '0', this.fpos(Z), 'cl cl-tick', [-10, 10]); continue; }
           const c = Z.slice(); c[i] = k; this.addLabel(`t${i}_${k}`, String(Math.round(k * 100) / 100).replace('-', '−'), this.fpos(c), 'cl cl-tick', i === 0 ? [0, 12] : [-14, 4]);
@@ -268,7 +268,7 @@ export class View {
         for (let i = 0; i < n; i++) {
           const c = Z.slice(); c[i] = 1; const e = this.fpos(c);
           this.addSegs([O, e], { color: AXIS_COLORS[i], width: 3.6, order: 5 }); this.arrowHead(O, e, AXIS_COLORS[i], 15);
-          this.addLabel('bs' + i, bn[i], O.clone().lerp(e, .5), 'cl cl-basis', [0, -10]).el.style.color = AXIS_COLORS[i];
+          this.addLabel('bs' + i, bn[i], O.clone().lerp(e, .5), 'cl cl-basis', [0, -10]).el.style.color = textCss(AXIS_COLORS[i]);
         }
       }
     }
@@ -303,9 +303,9 @@ export class View {
   }
   drawObj(o, sel, hov, pts) {
     const v = o.value, col = o.style.color, hi = sel || hov, w = (o.style.width || 2.2) + (sel ? 1.6 : hov ? .8 : 0);
-    const id = o.id, lc = sel ? inkCss() : col;
+    const id = o.id, lc = sel ? inkCss() : strokeCss(col);
     const showLabel = o.style.label !== false;
-    const label = (pos, off) => { if (showLabel) this.addLabel('o' + id, o.name, pos, 'cl cl-obj' + (sel ? ' sel' : ''), off || [8, -14]).el.style.color = col; };
+    const label = (pos, off) => { if (showLabel) this.addLabel('o' + id, o.name, pos, 'cl cl-obj' + (sel ? ' sel' : ''), off || [8, -14]).el.style.color = textCss(col); };
     const segs = (pairs, opt = {}) => { this.addSegs(pairs, { color: lc, width: w, order: 6, ...opt }); this.pushPick(id, pairs); };
     const M = p => this.map(p);
     switch (v.t) {
@@ -329,7 +329,7 @@ export class View {
         const poly = this.planePolygon(v); if (!poly) break;
         const P3 = poly.map(M); this.addMesh(this.trisGeo([P3]), { color: '#ffffff', opacity: .22, hi, id });
         const pairs = []; for (let i = 0; i < P3.length; i++) pairs.push(P3[i], P3[(i + 1) % P3.length]);
-        segs(pairs, { color: '#ffffff', width: w * .75, opacity: .9 }); label(P3[0].clone().lerp(P3[Math.floor(P3.length / 2)], .25), [4, -12]); break;
+        segs(pairs, { color: strokeCss('#ffffff'), width: w * .75, opacity: .9 }); label(P3[0].clone().lerp(P3[Math.floor(P3.length / 2)], .25), [4, -12]); break;
       }
       case 'poly': {
         const P3 = v.pts.map(M); this.addMesh(this.trisGeo([P3]), { color: col, opacity: .16, hi, id });
@@ -385,7 +385,7 @@ export class View {
       }
       case 'basis': {
         const A = M(v.p), cols = AXIS_COLORS;
-        v.vs.forEach((e, i) => { const B = M(G.add(v.p, e)); segs([A, B], { color: sel ? inkCss() : cols[i % 4], width: w + 1 }); this.arrowHead(A, B, cols[i % 4], 14); this.addLabel(`b${id}_${i}`, `${o.name}<sub>${i + 1}</sub>`, A.clone().lerp(B, .55), 'cl cl-basis', [4, -10]).el.style.color = cols[i % 4]; });
+        v.vs.forEach((e, i) => { const B = M(G.add(v.p, e)); segs([A, B], { color: sel ? inkCss() : cols[i % 4], width: w + 1 }); this.arrowHead(A, B, cols[i % 4], 14); this.addLabel(`b${id}_${i}`, `${o.name}<sub>${i + 1}</sub>`, A.clone().lerp(B, .55), 'cl cl-basis', [4, -10]).el.style.color = textCss(cols[i % 4]); });
         break;
       }
       case 'angle': {
