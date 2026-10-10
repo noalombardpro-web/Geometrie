@@ -7,6 +7,7 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import * as G from './geo.js';
 import { onTheme, BG, inkCss } from './theme.js';
+import { clampZoom, nextPalier } from './zoom.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 export const AXIS_COLORS = ['#f28f79', '#8fe3b0', '#7fc8f8', '#f2c14e'];
@@ -30,7 +31,10 @@ export class View {
     this.cPersp = new OrbitControls(this.persp, this.renderer.domElement);
     this.cOrtho = new OrbitControls(this.ortho, this.renderer.domElement);
     for (const c of [this.cPersp, this.cOrtho]) { c.enableDamping = true; c.dampingFactor = .1; c.screenSpacePanning = true; }
-    this.cPersp.minDistance = 1; this.cPersp.maxDistance = 900;
+    this.cPersp.minDistance = .5; this.cPersp.maxDistance = 4000;
+    this.cPersp.enableZoom = false; this.cOrtho.enableZoom = false;
+    this.zoomPct = 100; this.baseDist = 20; this.baseOrtho = 1; this.onZoom = () => {};
+    this.renderer.domElement.addEventListener('wheel', e => { e.preventDefault(); this.setZoom(nextPalier(this.zoomPct, e.deltaY < 0 ? 1 : -1)); }, { passive: false });
     this.cOrtho.enableRotate = false; this.cOrtho.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
     this.cOrtho.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
     this.cPersp.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
@@ -79,7 +83,7 @@ export class View {
   resetCamera() {
     const R = this.range;
     if (this.dim === 2) {
-      this.ortho.up.set(0, 1, 0); this.ortho.position.set(R * .12, R * .12, 100); this.ortho.zoom = 1;
+      this.ortho.up.set(0, 1, 0); this.ortho.position.set(R * .12, R * .12, 100); this.ortho.zoom = this.baseOrtho;
       this.cOrtho.target.set(R * .12, R * .12, 0); this.ortho.lookAt(this.cOrtho.target);
       this.cOrtho.update();
     } else {
@@ -87,14 +91,27 @@ export class View {
       this.persp.position.set(d * .62, -d * .85, d * .55);
       this.cPersp.target.set(0, 0, Math.min(R, 40) * .12); this.persp.lookAt(this.cPersp.target);
       this.cPersp.update();
+      this.baseDist = this.persp.position.distanceTo(this.cPersp.target);
     }
     this.resize();
+    this.zoomPct = 100; this.onZoom(100);
+  }
+  // Zoom en pourcentage : 100 % = vue de référence, 200 % = deux fois plus près
+  setZoom(pct) {
+    pct = clampZoom(pct); this.zoomPct = pct;
+    if (this.dim === 2) { this.ortho.zoom = this.baseOrtho * pct / 100; this.ortho.updateProjectionMatrix(); }
+    else {
+      const t = this.cPersp.target, d = this.persp.position.clone().sub(t), len = d.length() || 1;
+      this.persp.position.copy(t).addScaledVector(d.divideScalar(len), this.baseDist * 100 / pct);
+    }
+    this.onZoom(pct);
   }
   setView(name) {
     if (this.dim === 2) return;
     const t = this.cPersp.target, d = this.persp.position.distanceTo(t), dirs = { persp: V(.62, -.85, .55), face: V(0, -1, .001), profil: V(1, 0, .001), dessus: V(0.001, -0.001, 1) };
     const v = dirs[name].normalize().multiplyScalar(name === 'persp' ? Math.max(d, 8) : d);
     this.persp.position.copy(t).add(v); this.persp.lookAt(t); this.cPersp.update();
+    this.baseDist = v.length(); this.zoomPct = 100; this.onZoom(100);
   }
 
   resize() {

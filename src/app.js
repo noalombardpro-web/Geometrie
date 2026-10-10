@@ -8,6 +8,7 @@ import { FORMULARY } from './formulary.js';
 import { COMMAND_DOC, LangError, expandProgram, parseExpr, evalAst } from './lang.js';
 import { EXAMPLES } from './examples.js';
 import { onTheme } from './theme.js';
+import { mountZoom } from './zoom.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -126,6 +127,8 @@ function syncView() {
 }
 doc.onChange = syncView;
 onTheme(() => { S.dirty = true; });
+const zoomBar = mountZoom($('czoom'), () => view.zoomPct, p => view.setZoom(p));
+view.onZoom = p => zoomBar.sync(p);
 function commit() { doc.commit(); try { localStorage.setItem(STORE, JSON.stringify(doc.toJSON())); } catch { /* stockage indisponible */ } syncButtons(); }
 function syncButtons() { $('undoBtn').disabled = doc.ptr <= 0; $('redoBtn').disabled = doc.ptr >= doc.stack.length - 1; document.querySelectorAll('#dimSeg button').forEach(b => b.classList.toggle('on', +b.dataset.dim === doc.dim)); }
 

@@ -1,7 +1,7 @@
 // Thème clair / sombre partagé par les deux ateliers. Le choix est mémorisé dans le navigateur.
 const KEY = 'atelier-theme';
-export const BG = { dark: 0x08090b, light: 0xf3f4ef };
-export const INK = { dark: 0xeceee4, light: 0x14181b };
+export const BG = { dark: 0x08090b, light: 0xb4bdcb };
+export const INK = { dark: 0xeceee4, light: 0x1f2733 };
 const listeners = new Set();
 let theme = 'dark';
 try { theme = localStorage.getItem(KEY) === 'light' ? 'light' : 'dark'; } catch { /* stockage indisponible : sombre par défaut */ }

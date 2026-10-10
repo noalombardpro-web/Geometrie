@@ -21,9 +21,9 @@
   }
   /* Mode clair : mêmes noms de jetons, valeurs claires (choisi via le bouton ☀ / ☾) */
   :root[data-theme="light"] {
-    --board:#f3f4ef; --board-2:#e7e9e1; --panel:#fbfbf8; --chalk:#14181b; --muted:#5b6664; --ink-rgb:20,24,27;
-    --glass:rgba(255,255,255,.85); --field:rgba(20,24,27,.06);
-    --accent:#b97f08; --ok:#1d7a4b; --warn:#b4432a;
+    --board:#b4bdcb; --board-2:#a7b1c1; --panel:#c3cbd8; --chalk:#0b0f14; --muted:#2f3a4b; --ink-rgb:11,15,20;
+    --glass:rgba(206,213,225,.9); --field:rgba(11,15,20,.1);
+    --accent:#2f6fd6; --ok:#1b6b45; --warn:#a8402a;
     color-scheme:light;
   }
   * { box-sizing:border-box; }
@@ -52,13 +52,19 @@
   .toolbar > * { pointer-events:auto; }
   .chip { font:500 12px var(--f-ui); color:var(--chalk); background:var(--glass); border:1px solid var(--line); border-radius:999px; padding:6px 11px; cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .chip:hover { border-color:var(--line-2); }
-  .chip[aria-pressed="true"] { background:var(--chalk); color:var(--board); border-color:transparent; }
+  .chip[aria-pressed="true"] { background:var(--accent); color:var(--chalk); border-color:transparent; }
   .chip:focus-visible, .seg button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .seg { display:flex; background:var(--glass); border:1px solid var(--line); border-radius:999px; padding:2px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .seg button { all:unset; cursor:pointer; font:500 12px var(--f-ui); padding:4px 10px; border-radius:999px; color:var(--muted); }
   .seg button.on { background:rgba(var(--ink-rgb),.14); color:var(--chalk); }
   .opac { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); background:var(--glass); border:1px solid var(--line); border-radius:999px; padding:4px 12px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .opac input { width:80px; }
+  .zoom-pos { position:absolute; right:12px; bottom:12px; z-index:3; }
+  .zoombar { display:flex; align-items:center; gap:6px; background:var(--glass); border:1px solid var(--line); border-radius:999px; padding:4px 8px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); font:500 12px var(--f-data); color:var(--chalk); }
+  .zoombar button { width:24px; height:24px; border-radius:50%; border:1px solid var(--line-2); background:none; color:var(--chalk); cursor:pointer; font-size:14px; line-height:1; padding:0; }
+  .zoombar button:hover { background:rgba(var(--ink-rgb),.12); }
+  .zoombar input { width:150px; accent-color:var(--accent); cursor:pointer; }
+  .zoombar output { min-width:48px; text-align:right; font-variant-numeric:tabular-nums; }
   .legend { position:absolute; left:14px; bottom:12px; font-size:11.5px; color:var(--muted); display:flex; gap:14px; flex-wrap:wrap; pointer-events:none; }
   .legend span::before { content:""; display:inline-block; width:18px; height:0; border-top:2px solid var(--chalk); vertical-align:middle; margin-right:6px; }
   .legend span.dash::before { border-top-style:dashed; opacity:.6; }
@@ -290,6 +296,7 @@
       <button class="chip" id="t-phys" aria-pressed="true">G, poids, axe Δ</button>
       <label class="opac" for="opacity">Faces <input type="range" id="opacity" min="0" max="0.6" step="0.01" value="0.06"></label>
     </div>
+    <div class="zoom-pos" id="zoomS" aria-label="Zoom"></div>
     <div class="legend"><span>arête visible</span><span class="dash">arête cachée</span><span class="grid">quadrillage : 1 cm</span></div>
   </main>
 
@@ -345,6 +352,7 @@
     <aside class="algwrap" aria-label="Objets"><h2 class="ph">Objets</h2><div id="alg" class="alg"></div></aside>
     <main class="cview">
       <div id="cstage"></div><div id="clabels"></div><canvas id="cink"></canvas>
+      <div class="zoom-pos" id="czoom" style="top:12px;bottom:auto" aria-label="Zoom"></div>
       <div class="cfoot">
         <div class="cline"><span id="cstatus" class="cstat"></span><span id="ccoord" class="ccoord"></span></div>
         <div id="chint" class="chint"></div>
@@ -369,6 +377,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { onTheme, BG, INK, currentTheme } from './src/theme.js';
+import { mountZoom, nextPalier, clampZoom } from './src/zoom.js';
 import { OrbitControls } from 'three/addons/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/CSS2DRenderer.js';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
@@ -396,7 +405,16 @@ scene.background = new THREE.Color(BG.dark);
 const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 500);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
-controls.minDistance = 2; controls.maxDistance = 120;
+controls.minDistance = .5; controls.maxDistance = 400; controls.enableZoom = false;
+let zoomPct = 100, baseDist = 20;
+const zoomBar = mountZoom($('zoomS'), () => zoomPct, p => setZoomS(p));
+function setZoomS(p) {
+  zoomPct = clampZoom(p);
+  const d = camera.position.clone().sub(controls.target), len = d.length() || 1;
+  camera.position.copy(controls.target).addScaledVector(d.divideScalar(len), baseDist * 100 / zoomPct);
+  zoomBar.sync(zoomPct);
+}
+renderer.domElement.addEventListener('wheel', e => { e.preventDefault(); setZoomS(nextPalier(zoomPct, e.deltaY < 0 ? 1 : -1)); }, { passive: false });
 controls.maxPolarAngle = PI * 0.495;
 
 const lineMats = new Set();
@@ -794,6 +812,7 @@ function frame(view, animate) {
   tween.p0.copy(camera.position); tween.t0.copy(controls.target);
   tween.t1.copy(c); tween.p1.copy(c).addScaledVector(dirs[view].normalize(), dist);
   tween.t = animate ? 0 : 1;
+  baseDist = dist; zoomPct = 100; zoomBar?.sync(100);
   if (!animate) { camera.position.copy(tween.p1); controls.target.copy(tween.t1); }
 }
 document.querySelectorAll('#views button').forEach(b => b.onclick = () => {
