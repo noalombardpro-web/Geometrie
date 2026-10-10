@@ -6,10 +6,10 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import * as G from './geo.js';
+import { onTheme, BG, inkCss } from './theme.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 export const AXIS_COLORS = ['#f28f79', '#8fe3b0', '#7fc8f8', '#f2c14e'];
-const BG = 0x08090b;
 
 export class View {
   constructor(host, labelHost, inkCanvas) {
@@ -23,7 +23,8 @@ export class View {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     host.appendChild(this.renderer.domElement);
     this.labelRenderer = new CSS2DRenderer({ element: labelHost });
-    this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(BG);
+    this.scene = new THREE.Scene(); this.scene.background = new THREE.Color();
+    onTheme(t => this.scene.background.setHex(BG[t]));
     this.persp = new THREE.PerspectiveCamera(40, 1, 0.05, 2000); this.persp.up.set(0, 0, 1);
     this.ortho = new THREE.OrthographicCamera(-10, 10, 10, -10, -500, 500);
     this.cPersp = new OrbitControls(this.persp, this.renderer.domElement);
@@ -227,8 +228,8 @@ export class View {
           const A2 = Z.slice(), B2 = Z.slice(); A2[b] = k; A2[a] = -R; B2[b] = k; B2[a] = R; M.push(...sub(A2, B2));
         } else M.push(at(a, k, b, -R), at(a, k, b, R), at(b, k, a, -R), at(b, k, a, R));
       }
-      this.addSegs(minor, { color: '#eceee4', width: 1, opacity: .08, order: 0 });
-      this.addSegs(major, { color: '#eceee4', width: 1.2, opacity: .2, order: 0 });
+      this.addSegs(minor, { color: inkCss(), width: 1, opacity: .08, order: 0 });
+      this.addSegs(major, { color: inkCss(), width: 1.2, opacity: .2, order: 0 });
     }
     if (this.opts.axes) {
       const names = this.axisNames || ['x', 'y', 'z', 'w'], ts = Math.max(gs, R <= 12 ? 1 : gs);
@@ -285,7 +286,7 @@ export class View {
   }
   drawObj(o, sel, hov, pts) {
     const v = o.value, col = o.style.color, hi = sel || hov, w = (o.style.width || 2.2) + (sel ? 1.6 : hov ? .8 : 0);
-    const id = o.id, lc = sel ? '#ffffff' : col;
+    const id = o.id, lc = sel ? inkCss() : col;
     const showLabel = o.style.label !== false;
     const label = (pos, off) => { if (showLabel) this.addLabel('o' + id, o.name, pos, 'cl cl-obj' + (sel ? ' sel' : ''), off || [8, -14]).el.style.color = col; };
     const segs = (pairs, opt = {}) => { this.addSegs(pairs, { color: lc, width: w, order: 6, ...opt }); this.pushPick(id, pairs); };
@@ -367,7 +368,7 @@ export class View {
       }
       case 'basis': {
         const A = M(v.p), cols = AXIS_COLORS;
-        v.vs.forEach((e, i) => { const B = M(G.add(v.p, e)); segs([A, B], { color: sel ? '#fff' : cols[i % 4], width: w + 1 }); this.arrowHead(A, B, cols[i % 4], 14); this.addLabel(`b${id}_${i}`, `${o.name}<sub>${i + 1}</sub>`, A.clone().lerp(B, .55), 'cl cl-basis', [4, -10]).el.style.color = cols[i % 4]; });
+        v.vs.forEach((e, i) => { const B = M(G.add(v.p, e)); segs([A, B], { color: sel ? inkCss() : cols[i % 4], width: w + 1 }); this.arrowHead(A, B, cols[i % 4], 14); this.addLabel(`b${id}_${i}`, `${o.name}<sub>${i + 1}</sub>`, A.clone().lerp(B, .55), 'cl cl-basis', [4, -10]).el.style.color = cols[i % 4]; });
         break;
       }
       case 'angle': {
